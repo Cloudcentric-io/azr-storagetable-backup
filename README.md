@@ -6,7 +6,7 @@ This simple solution provides periodic automated Azure Table storage backup util
 
 ## Prerequisites
 You need to have latest azure compatible powershell installed with respective azure modules for the script to work.
-The script was tested in Linux and MacOS. Shoudl be fine with windows as well.
+The script was tested in Linux and MacOS. Should be fine with windows as well. Not working? Please let me know.
 
 ## Contents of the directory
 
@@ -16,7 +16,7 @@ The script was tested in Linux and MacOS. Shoudl be fine with windows as well.
 
 ## Access permissions
 
-Azure Automation account uses managed identity, by default having the contributor role assigned on a subscription level during creation. If you would like to have least privileged access applied, and you should definitelly do, use the IAM RBAC permissions assigned as follows:
+Azure Automation account uses managed identity, by default having the contributor role assigned on a subscription level during creation. If you would like to have least privileged access applied, and you should definitelly do, use the IAM RBAC permissions assigned as follows to the service principal:
 
 1. Source Storage Account - Storage Account Contributor Role.
 2. Target Storage Account - Storage Account Contributor Role.
