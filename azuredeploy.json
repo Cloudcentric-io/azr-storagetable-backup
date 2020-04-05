@@ -1,0 +1,161 @@
+{
+  "$schema": "https://schema.management.azure.com/sc,hemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+    "parameters": {
+        "targetrg": {
+            "type": "string",
+            "metadata" :{
+                "description": "Target resource group to place solution elements"
+            }
+        },
+        "targetsa": {
+            "type": "string",
+            "metadata": {
+                "description": "Target storage account name for storing backup files"
+            }
+        },
+        "targetlocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Target region to store backups"
+            }
+        },
+        "backupaccount": {
+            "type": "string",
+            "metadata": {
+                "description": "Automation account name"
+            }
+        },
+        "tablebackupblob": {
+            "type": "string",
+            "metadata": {
+                "description": "Storage account container name for blobs"
+            }
+        }
+  },
+  "variables": {
+      "schedulename": "[ concat(parameters('targetrg'), uniqueString(subscription().subscriptionId))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2018-05-01",
+      "name": "[parameters('targetrg')]",
+      "location": "[parameters('targetlocation')]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "storageDeployment",
+      "resourceGroup": "[parameters('targetrg')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/resourceGroups/', parameters('targetrg'))]"
+      ],
+      "properties": {
+          "mode": "Incremental",
+          "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {},
+                "variables": {},
+                "resources": [
+                    {
+                        "type": "Microsoft.Storage/storageAccounts",
+                        "name": "[parameters('targetsa')]",
+                        "apiVersion": "2018-07-01",
+                        "location": "[parameters('targetlocation')]",
+                        "kind": "StorageV2",
+                        "sku": {
+                            "name": "Standard_LRS",
+                            "tier": "Standard"
+                        },
+                        "properties": {
+                            "accessTier": "Hot",
+                            "largeFileSharesState": "Disabled",
+                            "networkAcls": {
+                                "bypass": "AzureServices",
+                                "virtualNetworkRules": [],
+                                "ipRules": [],
+                                "defaultAction": "Allow"
+                            },
+                            "supportsHttpsTrafficOnly": true
+                        },
+                        "resources": [
+                            {
+                                "name": "[concat('default/', parameters('tablebackupblob'))]",
+                                "type": "blobServices/containers",
+                                "apiVersion": "2018-07-01",
+                                "properties": {
+                                    "publicAccess": "None",
+                                    "metadata": {}
+                                },
+                                "dependsOn": [
+                                    "[parameters('targetsa')]"
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Microsoft.Automation/automationAccounts",
+                        "apiVersion": "2015-10-31",
+                        "name": "[parameters('backupaccount')]",
+                        "location": "[parameters('targetlocation')]",
+                        "properties": {
+                            "sku": {
+                                "name": "Basic"
+                            }
+                        }
+                    },
+                    {
+                        "type": "Microsoft.Automation/automationAccounts/runbooks",
+                        "apiVersion": "2018-06-30",
+                        "name": "[concat(parameters('backupaccount'), '/registry-backup')]",
+                        "dependsOn": [
+                            "[resourceId('Microsoft.Automation/automationAccounts/', parameters('backupaccount'))]"
+                        ],
+                        "properties": {
+                            "runbookType": "PowerShell",
+                            "parameters": {},
+                            "publishContentLink": {
+                                "uri": "https://raw.githubusercontent.com/akcloudguru/azr-storagetable-backup/master/azr-table-backup.ps1"
+                            }
+                        },
+                        "location": "[parameters('targetlocation')]"
+                    },
+                    {
+                        "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+                        "apiVersion": "2015-10-31",
+                        "name": "[concat(parameters('backupaccount'), '/', variables('schedulename'))]",
+                        "dependsOn": [
+                            "[resourceId('Microsoft.Automation/automationAccounts', parameters('backupaccount'))]"
+                        ],
+                        "properties": {
+                            "runbook": {
+                                "name": "registry-backup"
+                            },
+                            "schedule": {
+                                "name": "Daily registry backup"
+                            }
+                        }
+                    },
+                    {
+                        "type": "Microsoft.Automation/automationAccounts/schedules",
+                        "apiVersion": "2015-10-31",
+                        "name": "[concat(parameters('backupaccount'), '/Daily registry backup')]",
+                        "dependsOn": [
+                            "[resourceId('Microsoft.Automation/automationAccounts', parameters('backupaccount'))]"
+                        ],
+                        "properties": {
+                            "interval": 1,
+                            "frequency": "Day",
+                            "timeZone": "Europe/Vilnius"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+  ],
+  "outputs": {}
+}
