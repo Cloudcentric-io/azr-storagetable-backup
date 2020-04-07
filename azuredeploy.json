@@ -71,7 +71,7 @@
                             "tier": "Standard"
                         },
                         "properties": {
-                            "accessTier": "Hot",
+                            "accessTier": "Cold",
                             "largeFileSharesState": "Disabled",
                             "networkAcls": {
                                 "bypass": "AzureServices",
